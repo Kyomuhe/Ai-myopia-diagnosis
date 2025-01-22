@@ -1,0 +1,5 @@
+training:
+
+python train.py --img 640 --batch 16 --epochs 50 --data data.yaml --weights yolov5s.pt --patience 3
+Testing:
+python detect.py --weights runs/train/exp26/weights/best.pt --img 640 --conf 0.25 --source ../PALM/Testing/Images
