@@ -4,6 +4,7 @@ import axios from "axios";
 const UploadForm = () => {
   const [file, setFile] = useState(null);
   const [resultImage, setResultImage] = useState("");
+  const [resultPdf, setResultPdf] = useState("");
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -23,6 +24,7 @@ const UploadForm = () => {
     try {
       const response = await axios.post("http://127.0.0.1:5000/detect", formData);
       setResultImage(response.data.image_url);
+      setResultPdf(response.data.pdf_url);
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("An error occurred while processing the file.");
@@ -40,6 +42,12 @@ const UploadForm = () => {
         <div>
           <h2>Detection Result:</h2>
           <img src={resultImage} alt="Detection Result" style={{ maxWidth: "100%" }} />
+          <div>
+            <h3>Download Report:</h3>
+            <a href={resultPdf} download>
+              Download PDF
+            </a>
+          </div>
         </div>
       )}
     </div>

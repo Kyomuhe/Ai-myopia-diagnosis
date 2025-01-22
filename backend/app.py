@@ -3,18 +3,30 @@ from flask_cors import CORS
 import os
 from pathlib import Path
 import torch
+from fpdf import FPDF
 
 app = Flask(__name__)
 CORS(app)
 
-# Load your YOLOv5 model
-MODEL_PATH = "runs/train/exp26/weights/best.pt"
+# Define paths
+MODEL_PATH = "../yolov5/runs/train/exp26/weights/best.pt"
+UPLOAD_FOLDER = "uploads"
+PDF_FOLDER = "pdfs"
+
+# Ensure necessary directories exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(PDF_FOLDER, exist_ok=True)
+
+# Load YOLOv5 model
 model = torch.hub.load("ultralytics/yolov5", "custom", path=MODEL_PATH)
 
-UPLOAD_FOLDER = "uploads"
-RESULTS_FOLDER = "results"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(RESULTS_FOLDER, exist_ok=True)
+def get_latest_results_dir():
+    """Find the latest runs/detect/expX directory."""
+    runs_dir = Path("runs/detect")
+    if not runs_dir.exists():
+        return None
+    exp_dirs = sorted(runs_dir.glob("exp*"), key=os.path.getmtime, reverse=True)
+    return exp_dirs[0] if exp_dirs else None
 
 @app.route("/detect", methods=["POST"])
 def detect():
@@ -23,19 +35,54 @@ def detect():
 
     file = request.files["file"]
     input_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    output_path = os.path.join(RESULTS_FOLDER, file.filename)
+    pdf_path = os.path.join(PDF_FOLDER, f"{Path(file.filename).stem}.pdf")
 
+    # Save the uploaded file
     file.save(input_path)
 
-    # Perform detection
-    results = model(input_path)
-    results.save(RESULTS_FOLDER)
+    try:
+        # Perform detection
+        results = model(input_path)
+        results.save()  # Default save location is runs/detect/expX
 
-    return jsonify({"image_url": f"http://127.0.0.1:5000/{output_path}"})
+        # Locate the latest results directory
+        latest_results_dir = get_latest_results_dir()
+        if not latest_results_dir:
+            return jsonify({"error": "No detection results found!"}), 500
+
+        # Find the processed image in the latest directory
+        processed_files = list(latest_results_dir.glob("*.jpg"))
+        if not processed_files:
+            return jsonify({"error": "No processed images found in results!"}), 500
+
+        saved_image_path = processed_files[0]  # Use the first processed image
+
+        # Generate PDF report
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="Pathological Myopia Detection Results", ln=True, align='C')
+        pdf.ln(10)
+        pdf.cell(200, 10, txt=f"File: {file.filename}", ln=True)
+        pdf.ln(10)
+        pdf.cell(200, 10, txt="See result image below:", ln=True)
+        pdf.image(str(saved_image_path), x=10, y=50, w=100)
+        pdf.output(pdf_path)
+
+        return jsonify({
+            "image_url": f"http://127.0.0.1:5000/{saved_image_path}",
+            "pdf_url": f"http://127.0.0.1:5000/{pdf_path}"
+        })
+
+    except Exception as e:
+        return jsonify({"error": f"Error during processing: {str(e)}"}), 500
 
 @app.route("/<path:filename>", methods=["GET"])
 def serve_file(filename):
-    return send_file(filename)
+    try:
+        return send_file(filename)
+    except FileNotFoundError:
+        return jsonify({"error": "File not found"}), 404
 
 if __name__ == "__main__":
     app.run(debug=True)
