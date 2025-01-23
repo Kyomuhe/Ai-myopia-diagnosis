@@ -34,6 +34,7 @@ def detect():
         return jsonify({"error": "No file uploaded"}), 400
 
     file = request.files["file"]
+    patient_name = request.form.get("patient_name", "Unknown Patient")  # Get patient name
     input_path = os.path.join(UPLOAD_FOLDER, file.filename)
     pdf_path = os.path.join(PDF_FOLDER, f"{Path(file.filename).stem}.pdf")
 
@@ -63,15 +64,22 @@ def detect():
         pdf.set_font("Arial", size=12)
         pdf.cell(200, 10, txt="Pathological Myopia Detection Results", ln=True, align='C')
         pdf.ln(10)
+        pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)  # Include patient name
         pdf.cell(200, 10, txt=f"File: {file.filename}", ln=True)
         pdf.ln(10)
         pdf.cell(200, 10, txt="See result image below:", ln=True)
         pdf.image(str(saved_image_path), x=10, y=50, w=100)
         pdf.output(pdf_path)
 
+        # Here you would implement your logic to generate detailed results and recommendations
+        detailed_results = "Detailed analysis of the results goes here."
+        recommendation = "Recommended treatment options based on the analysis."
+
         return jsonify({
             "image_url": f"http://127.0.0.1:5000/{saved_image_path}",
-            "pdf_url": f"http://127.0.0.1:5000/{pdf_path}"
+            "pdf_url": f"http://127.0.0.1:5000/{pdf_path}",
+            "detailed_results": detailed_results,  # Return detailed results
+            "recommendation": recommendation  # Return treatment recommendation
         })
 
     except Exception as e:
