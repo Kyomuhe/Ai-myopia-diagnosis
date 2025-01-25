@@ -7,7 +7,7 @@ const UploadForm = () => {
   const [patientName, setPatientName] = useState("");
   const [resultImage, setResultImage] = useState("");
   const [resultPdf, setResultPdf] = useState("");
-  const [detailedResults, setDetailedResults] = useState("");
+  const [specialistReview, setSpecialistReview] = useState("");
   const [activeTab, setActiveTab] = useState("detection");
 
   const handleFileChange = (e) => {
@@ -25,12 +25,12 @@ const UploadForm = () => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("patient_name", patientName);
+    formData.append("specialist_review", specialistReview);
 
     try {
       const response = await axios.post("http://127.0.0.1:5000/detect", formData);
       setResultImage(response.data.image_url);
       setResultPdf(response.data.pdf_url);
-      setDetailedResults(response.data.detailed_results);
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("An error occurred while processing the file.");
@@ -42,7 +42,7 @@ const UploadForm = () => {
       case "detection":
         return (
           <div className="content-section">
-            <h2>Pathological Myopia Detection</h2>
+            <h2>Myopia DX</h2>
             <form onSubmit={handleSubmit}>
               <input
                 type="text"
@@ -79,9 +79,20 @@ const UploadForm = () => {
                       </a>
                     </div>
                     <div className="result-card">
-                      <h4>Detailed Analysis</h4>
-                      <p>{detailedResults}</p>
-                    </div>
+                      <h4>Detailed Analysis by Specialist</h4>
+                      <textarea
+                        placeholder="Add specialist review here..."
+                        value={specialistReview}
+                        onChange={(e) => setSpecialistReview(e.target.value)}
+                        style={{
+                          width:'100%',
+                          minHeight:'200px',
+                          resize: 'vertical'
+                        }}
+                     />
+                      <button onClick={handleSubmit}>save</button>
+
+                     </div>
                   </div>
                 </div>
               </div>

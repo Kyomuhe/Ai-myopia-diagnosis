@@ -8,16 +8,16 @@ from fpdf import FPDF
 app = Flask(__name__)
 CORS(app)
 
-# Define paths
+# Defining paths
 MODEL_PATH = "../yolov5/runs/train/exp26/weights/best.pt"
 UPLOAD_FOLDER = "uploads"
 PDF_FOLDER = "pdfs"
 
-# Ensure necessary directories exist
+# Ensuring necessary directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PDF_FOLDER, exist_ok=True)
 
-# Load YOLOv5 model
+# Loading YOLOv5 model
 model = torch.hub.load("ultralytics/yolov5", "custom", path=MODEL_PATH)
 
 def get_latest_results_dir():
@@ -32,56 +32,60 @@ def get_latest_results_dir():
 def detect():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
-
+    
     file = request.files["file"]
-    patient_name = request.form.get("patient_name", "Unknown Patient")  # Get patient name
+    patient_name = request.form.get("patient_name", "Unknown Patient")
+    specialist_review = request.form.get("specialist_review", "No review provided")
+
     input_path = os.path.join(UPLOAD_FOLDER, file.filename)
     pdf_path = os.path.join(PDF_FOLDER, f"{Path(file.filename).stem}.pdf")
-
-    # Save the uploaded file
+    
+    # Saving the uploaded file
     file.save(input_path)
-
+    
     try:
-        # Perform detection
+        # Performing detection
         results = model(input_path)
         results.save()  # Default save location is runs/detect/expX
-
-        # Locate the latest results directory
+        
+        # Locating the latest results directory
         latest_results_dir = get_latest_results_dir()
         if not latest_results_dir:
             return jsonify({"error": "No detection results found!"}), 500
-
-        # Find the processed image in the latest directory
+        
+        # Finding the processed image in the latest directory
         processed_files = list(latest_results_dir.glob("*.jpg"))
         if not processed_files:
             return jsonify({"error": "No processed images found in results!"}), 500
-
+        
         saved_image_path = processed_files[0]  # Use the first processed image
-
-        # Generate PDF report
+        
+        # Generating PDF report
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
         pdf.cell(200, 10, txt="Pathological Myopia Detection Results", ln=True, align='C')
         pdf.ln(10)
-        pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)  # Include patient name
+        pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)
         pdf.cell(200, 10, txt=f"File: {file.filename}", ln=True)
         pdf.ln(10)
+        pdf.cell(200, 10, txt="Specialist Review:", ln=True)
+        pdf.multi_cell(0, 10, txt=specialist_review)
+        pdf.ln(10)
         pdf.cell(200, 10, txt="See result image below:", ln=True)
-        pdf.image(str(saved_image_path), x=10, y=50, w=100)
+        pdf.image(str(saved_image_path), x=10, y=pdf.get_y() + 10, w=100)
         pdf.output(pdf_path)
 
-        # Here you would implement your logic to generate detailed results and recommendations
+        # will implement this later
         detailed_results = "Detailed analysis of the results goes here."
         recommendation = "Recommended treatment options based on the analysis."
-
+        
         return jsonify({
             "image_url": f"http://127.0.0.1:5000/{saved_image_path}",
             "pdf_url": f"http://127.0.0.1:5000/{pdf_path}",
-            "detailed_results": detailed_results,  # Return detailed results
-            "recommendation": recommendation  # Return treatment recommendation
+            "detailed_results": detailed_results,
+            "recommendation": recommendation
         })
-
     except Exception as e:
         return jsonify({"error": f"Error during processing: {str(e)}"}), 500
 
