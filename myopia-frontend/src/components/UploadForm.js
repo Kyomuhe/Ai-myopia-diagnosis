@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import axios from "axios";
 import './Dashboard.css';
+import { Search } from 'lucide-react';
+import PubMedArticles from './PubMedArticles.js'; 
+
+
 
 const UploadForm = () => {
   const [file, setFile] = useState(null);
@@ -9,6 +13,8 @@ const UploadForm = () => {
   const [resultPdf, setResultPdf] = useState("");
   const [specialistReview, setSpecialistReview] = useState("");
   const [activeTab, setActiveTab] = useState("detection");
+  const [searchQuery, setSearchQuery] = useState('');
+
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -38,6 +44,7 @@ const UploadForm = () => {
   };
 
   const renderContent = () => {
+
     switch(activeTab) {
       case "detection":
         return (
@@ -93,28 +100,44 @@ const UploadForm = () => {
                       <button onClick={handleSubmit}>save</button>
 
                      </div>
+                     <div className="result-card">
+                      <h4>Myopia Dx Recommendation</h4>
+                      <a>
+                        view AI treatment plan
+                      </a>
+                    </div>
+
                   </div>
                 </div>
               </div>
             )}
           </div>
         );
-      case "recommendations":
+      case "history":
         return (
           <div className="content-section">
-            <h2>Medical Recommendations</h2>
-            <p>Recommendations will be displayed here based on detection results.</p>
+            <h2>Patients History</h2>
+            <div className="search-container">
+              <Search className="search-icon" />
+              <input
+              type="text"
+              className="search-input"
+              placeholder="Search patient history..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <p>All previous patient results will apear here.</p>
           </div>
         );
       case "articles":
-        return (
-          <div className="content-section">
-            <h2>Related Medical Articles</h2>
-            <p>Recent medical research and articles about pathological myopia will be curated here.</p>
-          </div>
-        );
+        return <PubMedArticles />;
+
       default:
         return null;
+    
+
     }
   };
 
@@ -132,10 +155,10 @@ const UploadForm = () => {
           Detection
         </div>
         <div 
-          className={`tab ${activeTab === "recommendations" ? "active" : ""}`}
-          onClick={() => setActiveTab("recommendations")}
+          className={`tab ${activeTab === "history" ? "active" : ""}`}
+          onClick={() => setActiveTab("history")}
         >
-          Recommendations
+          Patient History
         </div>
         <div 
           className={`tab ${activeTab === "articles" ? "active" : ""}`}
