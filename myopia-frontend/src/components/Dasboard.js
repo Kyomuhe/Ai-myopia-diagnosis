@@ -14,6 +14,7 @@ import {
 // Import your separate component files for other sections
 import Detection from './Detection';
 import PubMedArticles from './PubMedArticles';
+import Patients from './Patients';
 
 const Dashboard = () => {
   const [activeItem, setActiveItem] = useState('Dashboard');
@@ -27,10 +28,8 @@ const Dashboard = () => {
     { name: 'Settings', icon: <Settings size={20} /> }
   ];
 
-  // Dashboard content component defined in the same file
   const DashboardContent = () => (
     <div>
-      <h3 className="text-xl font-semibold mb-4">Dashboard Overview</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
           <div className="flex items-center mb-2">
@@ -91,7 +90,7 @@ const Dashboard = () => {
       case 'Articles':
         return <PubMedArticles />;
       case 'Patients':
-        return <Detection />;
+        return <Patients />;
       case 'Settings':
         return <Detection />;
       default:
@@ -104,9 +103,16 @@ const Dashboard = () => {
       {/* Sidebar */}
       <div className="sticky top-0 h-screen w-64 bg-white border-r border-gray-200 shadow-sm">
         {/* Logo */}
+
         <div className="flex items-center justify-center h-16 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-blue-600">MyopiaDx</h1>
-        </div>
+          <div className="flex items-center space-x-2">
+            <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+            <h1 className="text-xl font-bold text-blue-500">MyopiaDx</h1>
+            </div>
+            </div>
         
         {/* Menu Items */}
         <nav className="mt-6">
