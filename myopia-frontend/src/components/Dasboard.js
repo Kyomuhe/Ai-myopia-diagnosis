@@ -15,6 +15,7 @@ import {
 import Detection from './Detection';
 import PubMedArticles from './PubMedArticles';
 import Patients from './Patients';
+import SettingsPage from './SettingsPage';
 
 const Dashboard = () => {
   const [activeItem, setActiveItem] = useState('Dashboard');
@@ -92,7 +93,7 @@ const Dashboard = () => {
       case 'Patients':
         return <Patients />;
       case 'Settings':
-        return <Detection />;
+        return <SettingsPage />;
       default:
         return <DashboardContent />;
     }
@@ -138,7 +139,6 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 p-8 overflow-y-auto">
-        <h2 className="text-2xl font-semibold text-gray-800">{activeItem}</h2>
         <div className="mt-4">
           {renderContent()}
         </div>
