@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import Signup from "./components/signup";
 import Signin from "./components/signin";
 import Dasboard from "./components/Dasboard";
+import Footer from "./components/Footer";
 
 
 
@@ -18,9 +19,11 @@ function App() {
                         <Route path="/signup" element={<Signup />} />
                         <Route path="/signin" element={<Signin />} />
 
+
                         <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </div>
+                <Footer />
 
             </div>
         </BrowserRouter>

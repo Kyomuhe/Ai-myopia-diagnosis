@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import { 
   Home, 
   Search, 
@@ -8,17 +10,33 @@ import {
   Settings,
   Eye,
   PieChart,
-  
+  LogOut,
+  Bell
 } from 'lucide-react';
 
-// Import your separate component files for other sections
 import Detection from './Detection';
 import PubMedArticles from './PubMedArticles';
 import Patients from './Patients';
 import SettingsPage from './SettingsPage';
+import PatientHistoryPage from './PatientHistoryPage';
+import profile3 from '../images/profile3.PNG';
+import Signin from './signin';
 
 const Dashboard = () => {
   const [activeItem, setActiveItem] = useState('Dashboard');
+  
+  // Sample profile
+  const user = {
+    name: "Dr. Sarah Johnson",
+    role: "Ophthalmologist",
+    profileImage: profile3
+  };
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    navigate('/signin');
+  };
+  
 
   const menuItems = [
     { name: 'Dashboard', icon: <Home size={20} /> },
@@ -31,6 +49,33 @@ const Dashboard = () => {
 
   const DashboardContent = () => (
     <div>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Welcome, {user.name}</h2>
+          <p className="text-gray-600">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <button className="relative p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full">
+            <Bell size={20} />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
+          <div className="flex items-center space-x-3">
+            <div className="text-right mr-2">
+              <p className="text-sm font-medium">{user.name}</p>
+              <p className="text-xs text-gray-500">{user.role}</p>
+            </div>
+            <div className="relative">
+              <img 
+                src={user.profileImage} 
+                alt="Profile" 
+                className="w-10 h-10 rounded-full border-2 border-blue-500"
+              />
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
           <div className="flex items-center mb-2">
@@ -87,7 +132,7 @@ const Dashboard = () => {
       case 'Detection':
         return <Detection />;
       case 'History':
-        return <Detection />;
+        return <PatientHistoryPage />;
       case 'Articles':
         return <PubMedArticles />;
       case 'Patients':
@@ -102,21 +147,20 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="sticky top-0 h-screen w-64 bg-white border-r border-gray-200 shadow-sm">
+      <div className="sticky top-0 h-screen w-64 bg-white border-r border-gray-200 shadow-sm flex flex-col">
         {/* Logo */}
-
         <div className="flex items-center justify-center h-16 border-b border-gray-200">
           <div className="flex items-center space-x-2">
             <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
             </svg>
             <h1 className="text-xl font-bold text-blue-500">MyopiaDx</h1>
-            </div>
-            </div>
+          </div>
+        </div>
         
         {/* Menu Items */}
-        <nav className="mt-6">
+        <nav className="mt-6 flex-grow">
           <ul>
             {menuItems.map((item) => (
               <li key={item.name} className="mb-2">
@@ -135,6 +179,17 @@ const Dashboard = () => {
             ))}
           </ul>
         </nav>
+        
+        {/* Logout Button */}
+        <div className="mt-auto border-t border-gray-200 p-4">
+          <button 
+          onClick={handleLogout}
+          className="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-md transition-colors duration-200"
+          >
+            <span className="mr-3"><LogOut size={20} /></span>
+            <span className="font-medium">Log Out</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
