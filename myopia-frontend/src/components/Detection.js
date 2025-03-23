@@ -1,15 +1,23 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 
 const Detection = () => {
   const [file, setFile] = useState(null);
   const [patientName, setPatientName] = useState("");
+  const [patientAge, setPatientAge] = useState("");
   const [resultImage, setResultImage] = useState("");
   const [resultPdf, setResultPdf] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   
-  // Added state for clinical measurements
+  // tate for patient search and selection
+  const [existingPatients, setExistingPatients] = useState([]);
+  const [filteredPatients, setFilteredPatients] = useState([]);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [isNewPatient, setIsNewPatient] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Clinical measurements
   const [specialistReview, setSpecialistReview] = useState("");
   const [axialLength, setAxialLength] = useState("");
   const [refraction, setRefraction] = useState({
@@ -20,6 +28,60 @@ const Detection = () => {
     right: "",
     left: ""
   });
+
+  // Fetch existing patients on component mount
+  useEffect(() => {
+    fetchExistingPatients();
+  }, []);
+
+  const fetchExistingPatients = async () => {
+    try {
+      // will replace with actual endpoint
+      const response = await axios.get("http://127.0.0.1:5000/patients");
+      setExistingPatients(response.data);
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+      // sample data
+      setExistingPatients([
+        { id: 1, name: "John Doe", age: 42 },
+        { id: 2, name: "Jane Smith", age: 35 },
+        { id: 3, name: "Robert Johnson", age: 58 }
+      ]);
+    }
+  };
+
+  const handlePatientSearch = (e) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    setShowPatientDropdown(true);
+    
+    if (term.trim() === "") {
+      setFilteredPatients([]);
+      return;
+    }
+    
+    const filtered = existingPatients.filter(patient => 
+      patient.name.toLowerCase().includes(term.toLowerCase())
+    );
+    setFilteredPatients(filtered);
+  };
+
+  const selectPatient = (patient) => {
+    setPatientName(patient.name);
+    setPatientAge(patient.age.toString());
+    setSearchTerm(patient.name);
+    setShowPatientDropdown(false);
+    setIsNewPatient(false);
+  };
+
+  const handleToggleNewPatient = () => {
+    setIsNewPatient(!isNewPatient);
+    if (!isNewPatient) {
+      setPatientName("");
+      setPatientAge("");
+      setSearchTerm("");
+    }
+  };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -61,6 +123,8 @@ const Detection = () => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("patient_name", patientName);
+    formData.append("patient_age", patientAge);
+    formData.append("is_new_patient", isNewPatient.toString());
     formData.append("specialist_review", specialistReview);
     formData.append("axial_length", axialLength);
     formData.append("refraction_right", refraction.right);
@@ -72,6 +136,11 @@ const Detection = () => {
       const response = await axios.post("http://127.0.0.1:5000/detect", formData);
       setResultImage(response.data.image_url);
       setResultPdf(response.data.pdf_url);
+      
+      // If successful and it's a new patient, refresh the patient list
+      if (isNewPatient) {
+        fetchExistingPatients();
+      }
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("An error occurred while processing the file.");
@@ -84,21 +153,89 @@ const Detection = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Myopia Detection & Analysis</h2>
         
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label htmlFor="patientName" className="block text-sm font-medium text-gray-700 mb-1">
-                Patient's Name
+          {/* Patient Selection Section */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Patient Information
               </label>
-              <input
-                id="patientName"
-                type="text"
-                placeholder="Enter full name"
-                value={patientName}
-                onChange={(e) => setPatientName(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 mr-2">New Patient</span>
+                <button 
+                  type="button"
+                  onClick={handleToggleNewPatient}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    isNewPatient ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isNewPatient ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
             
+            {isNewPatient ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="newPatientName" className="block text-xs text-gray-500 mb-1">
+                    Patient's Full Name
+                  </label>
+                  <input
+                    id="newPatientName"
+                    type="text"
+                    placeholder="Enter full name"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="patientAge" className="block text-xs text-gray-500 mb-1">
+                    Patient's Age
+                  </label>
+                  <input
+                    id="patientAge"
+                    type="number"
+                    placeholder="Enter age"
+                    value={patientAge}
+                    onChange={(e) => setPatientAge(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search for existing patient"
+                  value={searchTerm}
+                  onChange={handlePatientSearch}
+                  onFocus={() => setShowPatientDropdown(true)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                
+                {showPatientDropdown && filteredPatients.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {filteredPatients.map(patient => (
+                      <div 
+                        key={patient.id}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between"
+                        onClick={() => selectPatient(patient)}
+                      >
+                        <span>{patient.name}</span>
+                        <span className="text-gray-500">{patient.age} years</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <label htmlFor="axialLength" className="block text-sm font-medium text-gray-700 mb-1">
                 Axial Length (mm)
@@ -112,74 +249,64 @@ const Detection = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="refractionRight" className="block text-sm font-medium text-gray-700 mb-1">
+                  Refraction (Right)
+                </label>
+                <input
+                  id="refractionRight"
+                  type="text"
+                  placeholder="e.g., -2.50"
+                  value={refraction.right}
+                  onChange={(e) => setRefraction({...refraction, right: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="refractionLeft" className="block text-sm font-medium text-gray-700 mb-1">
+                  Refraction (Left)
+                </label>
+                <input
+                  id="refractionLeft"
+                  type="text"
+                  placeholder="e.g., -2.75"
+                  value={refraction.left}
+                  onChange={(e) => setRefraction({...refraction, left: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Refraction
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="refractionRight" className="block text-xs text-gray-500 mb-1">
-                    Right Eye (OD)
-                  </label>
-                  <input
-                    id="refractionRight"
-                    type="text"
-                    placeholder="e.g., -2.50"
-                    value={refraction.right}
-                    onChange={(e) => setRefraction({...refraction, right: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="refractionLeft" className="block text-xs text-gray-500 mb-1">
-                    Left Eye (OS)
-                  </label>
-                  <input
-                    id="refractionLeft"
-                    type="text"
-                    placeholder="e.g., -2.75"
-                    value={refraction.left}
-                    onChange={(e) => setRefraction({...refraction, left: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="visualAcuityRight" className="block text-sm font-medium text-gray-700 mb-1">
+                  Visual Acuity (Right)
+                </label>
+                <input
+                  id="visualAcuityRight"
+                  type="text"
+                  placeholder="e.g., 20/40"
+                  value={visualAcuity.right}
+                  onChange={(e) => setVisualAcuity({...visualAcuity, right: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Visual Acuity
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="visualAcuityRight" className="block text-xs text-gray-500 mb-1">
-                    Right Eye (OD)
-                  </label>
-                  <input
-                    id="visualAcuityRight"
-                    type="text"
-                    placeholder="e.g., 20/40"
-                    value={visualAcuity.right}
-                    onChange={(e) => setVisualAcuity({...visualAcuity, right: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="visualAcuityLeft" className="block text-xs text-gray-500 mb-1">
-                    Left Eye (OS)
-                  </label>
-                  <input
-                    id="visualAcuityLeft"
-                    type="text"
-                    placeholder="e.g., 20/30"
-                    value={visualAcuity.left}
-                    onChange={(e) => setVisualAcuity({...visualAcuity, left: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              <div>
+                <label htmlFor="visualAcuityLeft" className="block text-sm font-medium text-gray-700 mb-1">
+                  Visual Acuity (Left)
+                </label>
+                <input
+                  id="visualAcuityLeft"
+                  type="text"
+                  placeholder="e.g., 20/30"
+                  value={visualAcuity.left}
+                  onChange={(e) => setVisualAcuity({...visualAcuity, left: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
           </div>
@@ -212,7 +339,7 @@ const Detection = () => {
                 <p className="mb-2 text-sm text-gray-700">
                   <span className="font-medium">Click to upload</span> or drag and drop
                 </p>
-                <p className="text-xs text-gray-500">Image or video files</p>
+                <p className="text-xs text-gray-500">Images only</p>
                 {file && (
                   <p className="mt-2 text-sm font-medium text-blue-600">{file.name}</p>
                 )}
@@ -243,6 +370,20 @@ const Detection = () => {
               </div>
               
               <div className="space-y-4">
+                <div className="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
+                  <h4 className="font-medium text-gray-800 mb-2">Patient Information</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-500">Name:</p>
+                      <p className="font-medium">{patientName}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Age:</p>
+                      <p className="font-medium">{patientAge} years</p>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
                   <h4 className="font-medium text-gray-800 mb-2">Clinical Measurements</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">

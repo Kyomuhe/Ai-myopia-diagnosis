@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Eye, LineChart, AlertTriangle, FileText, Clock, Search, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertTriangle, FileText, Search, Users } from 'lucide-react';
 
 const PatientHistoryPage = () => {
   const [selectedRecord, setSelectedRecord] = useState(null);
