@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Defining paths
-MODEL_PATH = "../yolov5/runs/train/exp26/weights/best.pt"
+MODEL_PATH = "model/best.pt"
 UPLOAD_FOLDER = "uploads"
 PDF_FOLDER = "pdfs"
 
