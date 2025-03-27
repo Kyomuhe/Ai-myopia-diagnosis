@@ -5,6 +5,7 @@ import Signup from "./components/signup";
 import Signin from "./components/signin";
 import Dasboard from "./components/Dasboard";
 import Footer from "./components/Footer";
+import Recommendation from "./components/Recommendation";
 
 
 
@@ -18,6 +19,7 @@ function App() {
                         <Route path="/" element={<Dasboard />} /> {/* Use the Home component here */}
                         <Route path="/signup" element={<Signup />} />
                         <Route path="/signin" element={<Signin />} />
+                        <Route path="/Recommendation" element={<Recommendation />} /> 
 
 
                         <Route path="*" element={<Navigate to="/" />} />
