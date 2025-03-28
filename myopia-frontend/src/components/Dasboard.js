@@ -11,7 +11,8 @@ import {
   Eye,
   PieChart,
   LogOut,
-  Bell
+  Bell,
+  Brain
 } from 'lucide-react';
 
 import Detection from './Detection';
@@ -20,7 +21,7 @@ import Patients from './Patients';
 import SettingsPage from './SettingsPage';
 import PatientHistoryPage from './PatientHistoryPage';
 import profile3 from '../images/profile3.PNG';
-import Signin from './signin';
+import Recommendation from './Recommendation';
 
 const Dashboard = () => {
   const [activeItem, setActiveItem] = useState('Dashboard');
@@ -44,7 +45,9 @@ const Dashboard = () => {
     { name: 'History', icon: <History size={20} /> },
     { name: 'Articles', icon: <BookOpen size={20} /> },
     { name: 'Patients', icon: <Users size={20} /> },
-    { name: 'Settings', icon: <Settings size={20} /> }
+    { name: 'Settings', icon: <Settings size={20} /> },
+    { name: 'AI Recommendation', icon: <Brain size={20} /> }
+
   ];
 
   const DashboardContent = () => (
@@ -139,6 +142,8 @@ const Dashboard = () => {
         return <Patients />;
       case 'Settings':
         return <SettingsPage />;
+      case 'AI Recommendation':
+        return <Recommendation />;
       default:
         return <DashboardContent />;
     }

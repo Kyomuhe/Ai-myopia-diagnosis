@@ -11,6 +11,29 @@ import matplotlib.pyplot as plt
 app = Flask(__name__)
 CORS(app)
 
+class RecommendationPDF(FPDF):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        font_path = os.path.join(os.path.dirname(__file__), 'DejaVuSans.ttf')
+        
+        try:
+            self.add_font('DejaVu', '', font_path, uni=True)
+            self.add_font('DejaVu', 'B', font_path, uni=True)
+        except Exception as e:
+            print(f"Font loading error: {e}")
+            self.set_font('Arial', '', 12)
+
+    def header(self):
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, 'Myopia Treatment Recommendation', 0, 1, 'C')
+        self.ln(10)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', '', 8)
+        self.cell(0, 10, f'Page {self.page_no()}/{{nb}}', 0, 0, 'C')
+
+
 # Defining paths
 MODEL_PATH = "../yolov5/runs/train/exp26/weights/best.pt"
 UPLOAD_FOLDER = "uploads"
@@ -186,15 +209,10 @@ def detect():
         pdf.image(str(saved_image_path), x=10, y=pdf.get_y() + 10, w=100)
         pdf.output(pdf_path)
         
-        # will implement this later
-        detailed_results = "Detailed analysis of the results goes here."
-        recommendation = "Recommended treatment options based on the analysis."
         
         return jsonify({
             "image_url": f"http://127.0.0.1:5000/{saved_image_path}",
             "pdf_url": f"http://127.0.0.1:5000/{pdf_path}",
-            "detailed_results": detailed_results,
-            "recommendation": recommendation
         })
     except Exception as e:
         return jsonify({"error": f"Error during processing: {str(e)}"}), 500
@@ -224,46 +242,112 @@ def generate_recommendation():
 
 @app.route("/save-recommendation", methods=["POST"])
 def save_recommendation():
-    """
-    Save patient recommendation to a PDF
-    """
     try:
-        data = request.get_json()
-        patient_name = data.get('patient_name')
-        recommendation = data.get('recommendation')
-
-        if not patient_name or not recommendation:
-            return jsonify({"error": "Missing patient name or recommendation"}), 400
-
-        # Create PDF
-        pdf = FPDF()
+        data = request.get_json(force=True)
+        patient_name = data.get('patient_name', 'Unknown Patient')
+        recommendation = data.get('recommendation', {})
+        
+        pdf = RecommendationPDF(orientation='P', unit='mm', format='A4')
+        pdf.alias_nb_pages()
         pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="Myopia Treatment Recommendation", ln=True, align='C')
-        pdf.ln(10)
-        pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)
+        
+        page_width = pdf.w - 2 * pdf.l_margin
+        pdf.set_font('Arial', '', 12)
+        
+        # Patient and Document Header
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(page_width, 10, f"Myopia Treatment Recommendation for {patient_name}", 0, 1, 'C')
         pdf.ln(10)
         
-        pdf.cell(200, 10, txt="Overall Risk Summary:", ln=True)
-        pdf.multi_cell(0, 10, txt=recommendation['overall_risk_summary'])
-        pdf.ln(10)
-
-        pdf.cell(200, 10, txt="Primary Recommendations:", ln=True)
-        for rec in recommendation['primary_recommendations']:
-            pdf.multi_cell(0, 10, txt=f"• {rec}")
-        pdf.ln(10)
-
-        pdf.cell(200, 10, txt="Secondary Recommendations:", ln=True)
-        for rec in recommendation['secondary_recommendations']:
-            pdf.multi_cell(0, 10, txt=f"• {rec}")
-
-        pdf_path = os.path.join(RECOMMENDATION_FOLDER, f"{patient_name}_recommendation.pdf")
+        # Overall Risk Summary
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(page_width, 10, "Overall Risk Summary", 0, 1)
+        pdf.set_font('Arial', '', 11)
+        pdf.multi_cell(page_width, 10, recommendation.get('overall_risk_summary', 'No summary available'))
+        pdf.ln(5)
+        
+        # Risk Parameters
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(page_width, 10, "Risk Parameters", 0, 1)
+        pdf.set_font('Arial', '', 11)
+        risk_params = recommendation.get('risk_parameters', {})
+        for key, value in risk_params.items():
+            if isinstance(value, dict):
+                display_value = f"{value.get('value', 'N/A')} (Risk: {value.get('risk_category', 'N/A')})"
+            else:
+                display_value = str(value)
+            pdf.multi_cell(page_width, 10, f"{key.replace('_', ' ').title()}: {display_value}")
+        pdf.ln(5)
+        
+        # Primary Recommendations
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(page_width, 10, "Primary Recommendations", 0, 1)
+        pdf.set_font('Arial', '', 11)
+        primary_recs = recommendation.get('primary_recommendations', [])
+        for rec in primary_recs:
+            pdf.multi_cell(page_width, 10, f"• {rec}")
+        pdf.ln(5)
+        
+        # Secondary Recommendations
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(page_width, 10, "Secondary Recommendations", 0, 1)
+        pdf.set_font('Arial', '', 11)
+        secondary_recs = recommendation.get('secondary_recommendations', [])
+        for rec in secondary_recs:
+            pdf.multi_cell(page_width, 10, f"• {rec}")
+        pdf.ln(5)
+        
+        # Risk Chart
+        if recommendation.get('risk_chart_path'):
+            try:
+                pdf.add_page()
+                pdf.set_font('Arial', 'B', 12)
+                pdf.cell(page_width, 10, "Risk Assessment Visualization", 0, 1)
+                pdf.image(recommendation['risk_chart_path'], x=20, y=pdf.get_y() + 10, w=170)
+            except Exception as e:
+                print(f"Error adding risk chart to PDF: {e}")
+        
+        # Generate filename
+        pdf_filename = f"{patient_name}_myopia_recommendation.pdf"
+        pdf_path = os.path.join(RECOMMENDATION_FOLDER, pdf_filename)
+        
+        os.makedirs(RECOMMENDATION_FOLDER, exist_ok=True)
         pdf.output(pdf_path)
+        
+        return jsonify({
+            "message": "Recommendation saved successfully",
+            "filename": pdf_filename
+        })
+    
+    except Exception as e:
+        print(f"Error saving recommendation: {str(e)}")
+        return jsonify({"error": f"Error saving recommendation: {str(e)}"}), 500
 
-        return jsonify({"message": "Recommendation saved successfully", "pdf_path": pdf_path})
+# ... [rest of the code remains the same]
+@app.route("/download-recommendation/<filename>")
+def download_recommendation(filename):
+    """
+    Download a saved recommendation PDF
+    """
+    try:
+        # Validate filename to prevent directory traversal
+        safe_filename = os.path.basename(filename)
+        file_path = os.path.join(RECOMMENDATION_FOLDER, safe_filename)
+
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return jsonify({"error": "File not found"}), 404
+
+        # Send the file for download
+        return send_file(
+            file_path, 
+            as_attachment=True, 
+            download_name=safe_filename,
+            mimetype='application/pdf'
+        )
 
     except Exception as e:
-        return jsonify({"error": f"Error saving recommendation: {str(e)}"}), 500
+        return jsonify({"error": f"Error downloading recommendation: {str(e)}"}), 500
 
 @app.route("/<path:filename>", methods=["GET"])
 def serve_file(filename):
