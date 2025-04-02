@@ -247,31 +247,67 @@ def save_recommendation():
         patient_name = data.get('patient_name', 'Unknown Patient')
         recommendation = data.get('recommendation', {})
         
+        # Use the RecommendationPDF class that has Unicode support
         pdf = RecommendationPDF(orientation='P', unit='mm', format='A4')
         pdf.alias_nb_pages()
         pdf.add_page()
         
         page_width = pdf.w - 2 * pdf.l_margin
-        pdf.set_font('Arial', '', 12)
+        
+        # Try to use DejaVu font that supports Unicode characters
+        try:
+            pdf.set_font('DejaVu', '', 12)
+        except:
+            pdf.set_font('Arial', '', 12)
         
         # Patient and Document Header
-        pdf.set_font('Arial', 'B', 14)
+        try:
+            pdf.set_font('DejaVu', 'B', 14)
+        except:
+            pdf.set_font('Arial', 'B', 14)
         pdf.cell(page_width, 10, f"Myopia Treatment Recommendation for {patient_name}", 0, 1, 'C')
-        pdf.ln(10)
+        pdf.ln(5)
         
         # Overall Risk Summary
-        pdf.set_font('Arial', 'B', 12)
+        # Check if we need to add a page break before this section
+        if pdf.get_y() > 260:  # If less than 30mm available, add new page
+            pdf.add_page()
+            
+        try:
+            pdf.set_font('DejaVu', 'B', 12)
+        except:
+            pdf.set_font('Arial', 'B', 12)
         pdf.cell(page_width, 10, "Overall Risk Summary", 0, 1)
-        pdf.set_font('Arial', '', 11)
+        
+        try:
+            pdf.set_font('DejaVu', '', 11)
+        except:
+            pdf.set_font('Arial', '', 11)
         pdf.multi_cell(page_width, 10, recommendation.get('overall_risk_summary', 'No summary available'))
         pdf.ln(5)
         
         # Risk Parameters
-        pdf.set_font('Arial', 'B', 12)
+        # Check if we need to add a page break before this section
+        if pdf.get_y() > 240:  # Need more space for risk parameters
+            pdf.add_page()
+            
+        try:
+            pdf.set_font('DejaVu', 'B', 12)
+        except:
+            pdf.set_font('Arial', 'B', 12)
         pdf.cell(page_width, 10, "Risk Parameters", 0, 1)
-        pdf.set_font('Arial', '', 11)
+        
+        try:
+            pdf.set_font('DejaVu', '', 11)
+        except:
+            pdf.set_font('Arial', '', 11)
+            
         risk_params = recommendation.get('risk_parameters', {})
         for key, value in risk_params.items():
+            # Check if we need to add a page break
+            if pdf.get_y() > 270:
+                pdf.add_page()
+                
             if isinstance(value, dict):
                 display_value = f"{value.get('value', 'N/A')} (Risk: {value.get('risk_category', 'N/A')})"
             else:
@@ -280,30 +316,71 @@ def save_recommendation():
         pdf.ln(5)
         
         # Primary Recommendations
-        pdf.set_font('Arial', 'B', 12)
+        # Check if we need to add a page break before this section
+        if pdf.get_y() > 240:  # Need more space for recommendations
+            pdf.add_page()
+            
+        try:
+            pdf.set_font('DejaVu', 'B', 12)
+        except:
+            pdf.set_font('Arial', 'B', 12)
         pdf.cell(page_width, 10, "Primary Recommendations", 0, 1)
-        pdf.set_font('Arial', '', 11)
+        
+        try:
+            pdf.set_font('DejaVu', '', 11)
+        except:
+            pdf.set_font('Arial', '', 11)
+            
         primary_recs = recommendation.get('primary_recommendations', [])
         for rec in primary_recs:
-            pdf.multi_cell(page_width, 10, f"• {rec}")
+            # Check if we need to add a page break
+            if pdf.get_y() > 270:
+                pdf.add_page()
+                
+            pdf.multi_cell(page_width, 10, f"- {rec}")
         pdf.ln(5)
         
         # Secondary Recommendations
-        pdf.set_font('Arial', 'B', 12)
+        # Check if we need to add a page break before this section
+        if pdf.get_y() > 240:  # Need more space for secondary recommendations
+            pdf.add_page()
+            
+        try:
+            pdf.set_font('DejaVu', 'B', 12)
+        except:
+            pdf.set_font('Arial', 'B', 12)
         pdf.cell(page_width, 10, "Secondary Recommendations", 0, 1)
-        pdf.set_font('Arial', '', 11)
+        
+        try:
+            pdf.set_font('DejaVu', '', 11)
+        except:
+            pdf.set_font('Arial', '', 11)
+            
         secondary_recs = recommendation.get('secondary_recommendations', [])
         for rec in secondary_recs:
-            pdf.multi_cell(page_width, 10, f"• {rec}")
+            # Check if we need to add a page break
+            if pdf.get_y() > 270:
+                pdf.add_page()
+                
+            pdf.multi_cell(page_width, 10, f"- {rec}")
         pdf.ln(5)
         
-        # Risk Chart
+        # Risk Chart - Always start on a new page for the chart
         if recommendation.get('risk_chart_path'):
             try:
                 pdf.add_page()
-                pdf.set_font('Arial', 'B', 12)
+                try:
+                    pdf.set_font('DejaVu', 'B', 12)
+                except:
+                    pdf.set_font('Arial', 'B', 12)
                 pdf.cell(page_width, 10, "Risk Assessment Visualization", 0, 1)
-                pdf.image(recommendation['risk_chart_path'], x=20, y=pdf.get_y() + 10, w=170)
+                
+                # Center the chart and make sure it fits properly
+                chart_width = 160  # mm
+                chart_height = 100  # approximate height in mm
+                x_position = (page_width - chart_width) / 2 + pdf.l_margin
+                
+                pdf.image(recommendation['risk_chart_path'], x=x_position, y=pdf.get_y() + 5, w=chart_width)
             except Exception as e:
                 print(f"Error adding risk chart to PDF: {e}")
         
@@ -321,9 +398,7 @@ def save_recommendation():
     
     except Exception as e:
         print(f"Error saving recommendation: {str(e)}")
-        return jsonify({"error": f"Error saving recommendation: {str(e)}"}), 500
-
-# ... [rest of the code remains the same]
+        return jsonify({"error": f"Error saving recommendation: {str(e)}"}), 500# ... [rest of the code remains the same]
 @app.route("/download-recommendation/<filename>")
 def download_recommendation(filename):
     """
