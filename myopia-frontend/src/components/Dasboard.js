@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { 
@@ -25,19 +25,30 @@ import Recommendation from './Recommendation';
 
 const Dashboard = () => {
   const [activeItem, setActiveItem] = useState('Dashboard');
-  
-  // Sample profile
-  const user = {
-    name: "Dr. Sarah Johnson",
-    role: "Ophthalmologist",
-    profileImage: profile3
-  };
+  const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
 
+  // Check for authentication on component mount
+  useEffect(() => {
+    // Try to get user data from storage (localStorage first, then sessionStorage)
+    const storedUserData = localStorage.getItem('userData') || sessionStorage.getItem('userData');
+    
+    if (storedUserData) {
+      setUserData(JSON.parse(storedUserData));
+    } else {
+      // If no user data found, redirect to sign-in
+      navigate('/signin');
+    }
+  }, [navigate]);
+
   const handleLogout = () => {
+    // Clear user data from storage
+    localStorage.removeItem('userData');
+    sessionStorage.removeItem('userData');
+    
+    // Redirect to sign in page
     navigate('/signin');
   };
-  
 
   const menuItems = [
     { name: 'Dashboard', icon: <Home size={20} /> },
@@ -47,14 +58,15 @@ const Dashboard = () => {
     { name: 'Patients', icon: <Users size={20} /> },
     { name: 'Settings', icon: <Settings size={20} /> },
     { name: 'AI Recommendation', icon: <Brain size={20} /> }
-
   ];
 
   const DashboardContent = () => (
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Welcome, {user.name}</h2>
+          <h2 className="text-2xl font-bold text-gray-800">
+            Welcome, Doctor {userData ? userData.fullName : 'Doctor'}
+          </h2>
           <p className="text-gray-600">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
         <div className="flex items-center space-x-4">
@@ -64,12 +76,12 @@ const Dashboard = () => {
           </button>
           <div className="flex items-center space-x-3">
             <div className="text-right mr-2">
-              <p className="text-sm font-medium">{user.name}</p>
-              <p className="text-xs text-gray-500">{user.role}</p>
+              <p className="text-sm font-medium">{userData ? userData.fullName : 'Doctor'}</p>
+              <p className="text-xs text-gray-500">{userData ? userData.specialty : 'Specialist'}</p>
             </div>
             <div className="relative">
               <img 
-                src={user.profileImage} 
+                src={profile3} 
                 alt="Profile" 
                 className="w-10 h-10 rounded-full border-2 border-blue-500"
               />
@@ -149,6 +161,18 @@ const Dashboard = () => {
     }
   };
 
+  // Show loading state while checking authentication
+  if (!userData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
@@ -188,8 +212,8 @@ const Dashboard = () => {
         {/* Logout Button */}
         <div className="mt-auto border-t border-gray-200 p-4">
           <button 
-          onClick={handleLogout}
-          className="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-md transition-colors duration-200"
+            onClick={handleLogout}
+            className="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-md transition-colors duration-200"
           >
             <span className="mr-3"><LogOut size={20} /></span>
             <span className="font-medium">Log Out</span>

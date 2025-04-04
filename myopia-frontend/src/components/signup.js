@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, User, Lock, Mail, Briefcase, Award, Hospital } from 'lucide-react';
+import axios from 'axios'; // You'll need to install axios: npm install axios
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -15,6 +16,12 @@ const Signup = () => {
     confirmPassword: ''
   });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Flask API URL
+  const API_URL = 'http://localhost:5000/api/auth';
 
   const specialties = [
     "Ophthalmology",
@@ -63,8 +70,12 @@ const Signup = () => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Reset messages
+    setSuccessMessage('');
+    setErrorMessage('');
     
     const formErrors = validateForm();
     if (Object.keys(formErrors).length > 0) {
@@ -72,9 +83,46 @@ const Signup = () => {
       return;
     }
     
-    // Handle form submission
-    console.log('Form submitted:', formData);
-    // Here you would typically send this data to your backend API
+    setLoading(true);
+    
+    try {
+      // Send registration request to Flask API
+      const response = await axios.post(`${API_URL}/register`, {
+        fullName: formData.fullName,
+        email: formData.email,
+        medicalId: formData.medicalId,
+        specialty: formData.specialty,
+        hospital: formData.hospital,
+        yearsOfExperience: formData.yearsOfExperience,
+        password: formData.password
+      });
+      
+      // Handle successful registration
+      setSuccessMessage('Registration successful! You can now sign in.');
+      
+      // Reset form
+      setFormData({
+        fullName: '',
+        email: '',
+        medicalId: '',
+        specialty: '',
+        hospital: '',
+        yearsOfExperience: '',
+        password: '',
+        confirmPassword: ''
+      });
+      
+    } catch (error) {
+      // Handle registration error
+      if (error.response && error.response.data) {
+        setErrorMessage(error.response.data.message || 'Registration failed. Please try again.');
+      } else {
+        setErrorMessage('Network error. Please check your connection and try again.');
+      }
+      console.error('Registration error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -94,7 +142,24 @@ const Signup = () => {
         <h2 className="text-2xl font-semibold text-gray-800 text-center mb-6">Specialist Registration</h2>
         <p className="text-gray-600 text-center mb-6">Join our network of eye care specialists</p>
         
+        {/* Display success message */}
+        {successMessage && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+            <span className="block sm:inline">{successMessage}</span>
+          </div>
+        )}
+        
+        {/* Display error message */}
+        {errorMessage && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            <span className="block sm:inline">{errorMessage}</span>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit}>
+          {/* Form fields remain the same as in your original component */}
+          {/* ... */}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* Full Name */}
             <div>
@@ -309,9 +374,10 @@ const Signup = () => {
           
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            className={`w-full ${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors`}
+            disabled={loading}
           >
-            Create Account
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
         

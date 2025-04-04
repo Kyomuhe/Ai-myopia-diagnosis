@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, User, Lock } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, Mail } from 'lucide-react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const Signin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const navigate = useNavigate();
+
+  // Flask API URL - ensure this matches your backend endpoint
+  const API_URL = 'http://localhost:5000/api/auth';
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -15,16 +24,62 @@ const Signin = () => {
       ...formData,
       [name]: value
     });
+    
+    // Clear error when user starts typing
+    if (error) {
+      setError('');
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Login attempt with:', formData);
-  };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+    setError('');
+    setLoading(true);
+    
+    try {
+      console.log('Attempting login with:', formData);
+      
+      // Send login request to Flask API
+      const response = await axios.post(`${API_URL}/login`, {
+        email: formData.email,
+        password: formData.password
+      });
+      
+      // Handle successful login
+      console.log('Login successful:', response.data);
+      
+      // Save user data to localStorage or sessionStorage for persistence
+      const userData = {
+        userId: response.data.userId,
+        fullName: response.data.fullName,
+        email: response.data.email,
+        specialty: response.data.specialty,
+        hospital: response.data.hospital,
+        token: response.data.token
+      };
+      
+      // Store user data based on "remember me" option
+      if (rememberMe) {
+        localStorage.setItem('userData', JSON.stringify(userData));
+      } else {
+        sessionStorage.setItem('userData', JSON.stringify(userData));
+      }
+      
+      // Redirect to dashboard
+      navigate('/dashboard');
+      
+    } catch (error) {
+      // Handle login error
+      console.error('Login error:', error.response?.data || error);
+      
+      if (error.response?.data) {
+        setError(error.response.data.message || 'Invalid email or password');
+      } else {
+        setError('Network error. Please check your connection and try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,24 +97,32 @@ const Signin = () => {
         </div>
 
         <h2 className="text-2xl font-semibold text-gray-800 text-center mb-6">Sign In</h2>
+        
+        {/* Error message display */}
+        {error && (
+          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label htmlFor="username" className="block text-gray-700 font-medium mb-2">
-              Username
+            <label htmlFor="email" className="block text-gray-700 font-medium mb-2">
+              Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <User size={18} className="text-gray-500" />
+                <Mail size={18} className="text-gray-500" />
               </div>
               <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
                 onChange={handleInputChange}
                 required
                 className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="Enter your username"
+                placeholder="Enter your email"
               />
             </div>
           </div>
@@ -84,7 +147,7 @@ const Signin = () => {
               />
               <div 
                 className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer"
-                onClick={togglePasswordVisibility}
+                onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? 
                   <EyeOff size={18} className="text-gray-500" /> : 
@@ -116,15 +179,16 @@ const Signin = () => {
           
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            className={`w-full ${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors`}
+            disabled={loading}
           >
-            Sign In
+            {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
         
         <div className="mt-6 text-center text-sm">
           <span className="text-gray-600">Don't have an account? </span>
-          <a href="#" className="text-blue-600 hover:underline font-medium">
+          <a href="/signup" className="text-blue-600 hover:underline font-medium">
             Register now
           </a>
         </div>

@@ -7,9 +7,204 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from fpdf import FPDF
 import matplotlib.pyplot as plt
+from flask_pymongo import PyMongo
+from werkzeug.security import generate_password_hash, check_password_hash
+from bson.json_util import dumps
+from bson.objectid import ObjectId
+from werkzeug.security import generate_password_hash
+import jwt
+from flask import Blueprint, request, jsonify
+from werkzeug.security import check_password_hash
+from bson.objectid import ObjectId
+from flask_cors import cross_origin
+import jwt
+import datetime
+
+
+
+
+
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# MongoDB Configuration
+app.config["MONGO_URI"] = "mongodb://localhost:27017/myopiadx"
+app.config["SECRET_KEY"] = "myopiadx-secret-key"
+mongo = PyMongo(app)
+
+# Create authentication blueprint
+auth = Blueprint('auth', __name__)
+
+
+# Helper function to serialize MongoDB data
+def parse_json(data):
+    return dumps(data)
+
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    # Get registration data from request
+    data = request.json
+    
+    # Check if required fields are present
+    required_fields = ['fullName', 'email', 'medicalId', 'specialty', 'password']
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({"success": False, "message": f"{field} is required"}), 400
+    
+    # Check if user already exists with the email
+    existing_email = mongo.db.specialists.find_one({"email": data['email']})
+    if existing_email:
+        return jsonify({"success": False, "message": "Email already registered"}), 400
+    
+    # Check if user already exists with the medical ID
+    existing_medical_id = mongo.db.specialists.find_one({"medicalId": data['medicalId']})
+    if existing_medical_id:
+        return jsonify({"success": False, "message": "Medical ID already registered"}), 400
+    
+    # Validate specialty
+    specialties = [
+        "Ophthalmology",
+        "Optometry",
+        "Pediatric Ophthalmology",
+        "Retina Specialist",
+        "Cornea Specialist",
+        "Glaucoma Specialist", 
+        "Neuro-ophthalmology",
+        "Oculoplastics",
+        "Other"
+    ]
+    
+    if data['specialty'] not in specialties:
+        return jsonify({"success": False, "message": "Invalid specialty"}), 400
+    
+    # Create new specialist object
+    new_specialist = {
+        "fullName": data['fullName'],
+        "email": data['email'],
+        "medicalId": data['medicalId'],
+        "specialty": data['specialty'],
+        "hospital": data.get('hospital', ''),
+        "yearsOfExperience": data.get('yearsOfExperience', ''),
+        "password": generate_password_hash(data['password']),
+        "createdAt": datetime.now()
+    }
+    
+    # Insert new specialist into database
+    try:
+        result = mongo.db.specialists.insert_one(new_specialist)
+        
+        # Create response object (without sensitive info)
+        response_data = {
+            "id": str(result.inserted_id),
+            "fullName": data['fullName'],
+            "email": data['email']
+        }
+        
+        return jsonify({
+            "success": True,
+            "message": "Specialist registered successfully",
+            "data": response_data
+        }), 201
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": "Server error during registration",
+            "error": str(e)
+        }), 500
+
+# Health check route
+@app.route('/', methods=['GET'])
+def health_check():
+    return jsonify({"status": "API is running"})
+
+@app.route('/api/auth/login', methods=['POST'])
+@cross_origin()
+def login():
+    data = request.json
+    print(f"Login attempt received for email: {data.get('email')}")
+    
+    if not data or not data.get('email') or not data.get('password'):
+        print("Missing email or password in request")
+        return jsonify({'message': 'Email and password are required'}), 400
+    
+    # Find user by email in the correct collection
+    user = mongo.db.specialists.find_one({'email': data['email']})
+    print(f"User found in database: {user is not None}")
+    
+    if not user:
+        print("User not found in database")
+        return jsonify({'message': 'User not found. Please check your email or sign up.'}), 404
+    
+    # Check password
+    password_match = check_password_hash(user['password'], data['password'])
+    print(f"Password verification result: {password_match}")
+    
+    if password_match:
+        # Generate JWT token
+        token = jwt.encode({
+            'userId': str(user['_id']),
+            'email': user['email'],
+        }, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        print("Login successful, generating token")
+        
+        # Return user data and token
+        return jsonify({
+            'message': 'Login successful',
+            'token': token,
+            'userId': str(user['_id']),
+            'fullName': user['fullName'],
+            'email': user['email'],
+            'specialty': user.get('specialty', ''),
+            'hospital': user.get('hospital', ''),
+            'medicalId': user.get('medicalId', ''),
+            'yearsOfExperience': user.get('yearsOfExperience', '')
+        }), 200
+    
+    # If password doesn't match
+    print("Password verification failed")
+    return jsonify({'message': 'Invalid password'}), 401
+
+# Route to get user data (protected route example)
+@app.route('/user/<user_id>', methods=['GET'])
+@cross_origin()
+def get_user(user_id):
+    # Verify token from Authorization header
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': 'Token is missing'}), 401
+    
+    try:
+        # Remove 'Bearer ' if present
+        if token.startswith('Bearer '):
+            token = token[7:]
+        
+        # Decode token
+        data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+        
+        # Check if token is for requested user
+        if data['userId'] != user_id:
+            return jsonify({'message': 'Unauthorized access'}), 403
+        
+        # Get user data from database
+        user = mongo.db.specialists.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+        
+        # Remove password from response
+        user.pop('password', None)
+        user['_id'] = str(user['_id'])
+        
+        return jsonify(user), 200
+        
+    except jwt.ExpiredSignatureError:
+        return jsonify({'message': 'Token has expired'}), 401
+    except (jwt.InvalidTokenError, Exception) as e:
+        return jsonify({'message': 'Invalid token', 'error': str(e)}), 401
+
+
 
 class RecommendationPDF(FPDF):
     def __init__(self, *args, **kwargs):
@@ -398,7 +593,8 @@ def save_recommendation():
     
     except Exception as e:
         print(f"Error saving recommendation: {str(e)}")
-        return jsonify({"error": f"Error saving recommendation: {str(e)}"}), 500# ... [rest of the code remains the same]
+        return jsonify({"error": f"Error saving recommendation: {str(e)}"}), 500
+
 @app.route("/download-recommendation/<filename>")
 def download_recommendation(filename):
     """
@@ -431,5 +627,7 @@ def serve_file(filename):
     except FileNotFoundError:
         return jsonify({"error": "File not found"}), 404
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    # Import datetime here to avoid circular import
+    from datetime import datetime
+    app.run(debug=True, port=5000)
