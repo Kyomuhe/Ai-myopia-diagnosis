@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, User, Lock, Mail, Briefcase, Award, Hospital } from 'lucide-react';
-import axios from 'axios'; // You'll need to install axios: npm install axios
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,9 +18,6 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
-  // Flask API URL
-  const API_URL = 'http://localhost:5000/api/auth';
 
   const specialties = [
     "Ophthalmology",
@@ -70,7 +66,7 @@ const Signup = () => {
     return newErrors;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     // Reset messages
@@ -85,19 +81,12 @@ const Signup = () => {
     
     setLoading(true);
     
-    try {
-      // Send registration request to Flask API
-      const response = await axios.post(`${API_URL}/register`, {
-        fullName: formData.fullName,
-        email: formData.email,
-        medicalId: formData.medicalId,
-        specialty: formData.specialty,
-        hospital: formData.hospital,
-        yearsOfExperience: formData.yearsOfExperience,
-        password: formData.password
-      });
+    // Simulate API call with timeout
+    setTimeout(() => {
+      setLoading(false);
       
-      // Handle successful registration
+      // Show success message instead of API call
+      console.log('Registration form data:', formData);
       setSuccessMessage('Registration successful! You can now sign in.');
       
       // Reset form
@@ -111,18 +100,7 @@ const Signup = () => {
         password: '',
         confirmPassword: ''
       });
-      
-    } catch (error) {
-      // Handle registration error
-      if (error.response && error.response.data) {
-        setErrorMessage(error.response.data.message || 'Registration failed. Please try again.');
-      } else {
-        setErrorMessage('Network error. Please check your connection and try again.');
-      }
-      console.error('Registration error:', error);
-    } finally {
-      setLoading(false);
-    }
+    }, 1500);
   };
 
   return (
@@ -157,9 +135,6 @@ const Signup = () => {
         )}
         
         <form onSubmit={handleSubmit}>
-          {/* Form fields remain the same as in your original component */}
-          {/* ... */}
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* Full Name */}
             <div>
@@ -383,14 +358,11 @@ const Signup = () => {
         
         <div className="mt-6 text-center text-sm">
           <span className="text-gray-600">Already have an account? </span>
-          <a href="#" className="text-blue-600 hover:underline font-medium">
+          <a href="/signin" className="text-blue-600 hover:underline font-medium">
             Sign in
           </a>
         </div>
         
-        <div className="mt-8 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
-          © 2025 Myopia Dx. All rights reserved.
-        </div>
       </div>
     </div>
   );

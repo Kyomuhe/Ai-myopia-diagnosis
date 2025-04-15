@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, User, Lock, Mail } from 'lucide-react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
 const Signin = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,11 +10,6 @@ const Signin = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  const navigate = useNavigate();
-
-  // Flask API URL - ensure this matches your backend endpoint
-  const API_URL = 'http://localhost:5000/api/auth';
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -31,55 +24,27 @@ const Signin = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
     
-    try {
-      console.log('Attempting login with:', formData);
-      
-      // Send login request to Flask API
-      const response = await axios.post(`${API_URL}/login`, {
-        email: formData.email,
-        password: formData.password
-      });
-      
-      // Handle successful login
-      console.log('Login successful:', response.data);
-      
-      // Save user data to localStorage or sessionStorage for persistence
-      const userData = {
-        userId: response.data.userId,
-        fullName: response.data.fullName,
-        email: response.data.email,
-        specialty: response.data.specialty,
-        hospital: response.data.hospital,
-        token: response.data.token
-      };
-      
-      // Store user data based on "remember me" option
-      if (rememberMe) {
-        localStorage.setItem('userData', JSON.stringify(userData));
-      } else {
-        sessionStorage.setItem('userData', JSON.stringify(userData));
-      }
-      
-      // Redirect to dashboard
-      navigate('/dashboard');
-      
-    } catch (error) {
-      // Handle login error
-      console.error('Login error:', error.response?.data || error);
-      
-      if (error.response?.data) {
-        setError(error.response.data.message || 'Invalid email or password');
-      } else {
-        setError('Network error. Please check your connection and try again.');
-      }
-    } finally {
+    // Simulate loading for better UX
+    setTimeout(() => {
       setLoading(false);
-    }
+      
+      // Show successful login message or validation instead of API call
+      if (!formData.email || !formData.password) {
+        setError('Please fill in all fields');
+      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        setError('Please enter a valid email address');
+      } else {
+        // Instead of navigation, just show what would happen
+        console.log('Login successful with:', formData);
+        console.log('Remember me:', rememberMe);
+        // For demo purposes, you might want to redirect or show success
+        alert('Login successful! (This is a demo without backend connection)');
+      }
+    }, 1000);
   };
 
   return (
@@ -194,7 +159,6 @@ const Signin = () => {
         </div>
         
         <div className="mt-8 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
-          © 2025 Myopia Dx. All rights reserved.
           <div className="mt-1">
             <a href="#" className="text-blue-600 hover:underline">Terms of Service</a>
             <span className="mx-2">•</span>
