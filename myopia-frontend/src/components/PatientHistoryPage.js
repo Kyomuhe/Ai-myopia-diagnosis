@@ -97,7 +97,7 @@ const PatientHistoryPage = () => {
   const getRiskColor = (risk) => {
     switch(risk) {
       case "Low": return "bg-green-100 text-green-800";
-      case "Moderate": return "bg-yellow-100 text-yellow-800";
+      case "medium": return "bg-yellow-100 text-yellow-800";
       case "High": return "bg-orange-100 text-orange-800";
       case "Severe": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";

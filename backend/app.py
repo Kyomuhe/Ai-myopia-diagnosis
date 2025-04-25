@@ -4,12 +4,19 @@ import os
 from pathlib import Path
 import torch
 from fpdf import FPDF
+import severity
+import image_validator
+from PIL import Image
+
+import pathlib
+temp = pathlib.PosixPath
+pathlib.PosixPath = pathlib.WindowsPath
 
 app = Flask(__name__)
 CORS(app)
 
 # Defining paths
-MODEL_PATH = "model/best.pt"
+MODEL_PATH = "model/bestK.pt"
 UPLOAD_FOLDER = "uploads"
 PDF_FOLDER = "pdfs"
 
@@ -18,7 +25,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PDF_FOLDER, exist_ok=True)
 
 # Loading YOLOv5 model
-model = torch.hub.load("ultralytics/yolov5", "custom", path=MODEL_PATH)
+model = torch.hub.load("ultralytics/yolov5", "custom", path=MODEL_PATH, force_reload=True)
 
 def get_latest_results_dir():
     """Find the latest runs/detect/expX directory."""
@@ -61,33 +68,59 @@ def detect():
         saved_image_path = processed_files[0]  # Use the first processed image
         
         # Generating PDF report
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="Pathological Myopia Detection Results", ln=True, align='C')
-        pdf.ln(10)
-        pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)
-        pdf.cell(200, 10, txt=f"File: {file.filename}", ln=True)
-        pdf.ln(10)
-        pdf.cell(200, 10, txt="Specialist Review:", ln=True)
-        pdf.multi_cell(0, 10, txt=specialist_review)
-        pdf.ln(10)
-        pdf.cell(200, 10, txt="See result image below:", ln=True)
-        pdf.image(str(saved_image_path), x=10, y=pdf.get_y() + 10, w=100)
-        pdf.output(pdf_path)
+        # pdf = FPDF()
+        # pdf.add_page()
+        # pdf.set_font("Arial", size=12)
+        # pdf.cell(200, 10, txt="Pathological Myopia Detection Results", ln=True, align='C')
+        # pdf.ln(10)
+        # pdf.cell(200, 10, txt=f"Patient: {patient_name}", ln=True)
+        # pdf.cell(200, 10, txt=f"File: {severity.predict_image(input_path)}", ln=True)
+        # pdf.ln(10)
+        # pdf.cell(200, 10, txt="Specialist Review:", ln=True)
+        # pdf.multi_cell(0, 10, txt=specialist_review)
+        # pdf.ln(10)
+        # pdf.cell(200, 10, txt="See result image below:", ln=True)
+        # pdf.image(str(saved_image_path), x=10, y=pdf.get_y() + 10, w=100)
+        # pdf.output(pdf_path)
 
         # will implement this later
         detailed_results = "Detailed analysis of the results goes here."
         recommendation = "Recommended treatment options based on the analysis."
+
+        is_fundus_image = image_validator.is_fundus_image(input_path)
+        if(is_fundus_image):
+            result = severity.predict_image(input_path)
+        else:
+            result = "Unknown"
         
         return jsonify({
             "image_url": f"http://127.0.0.1:5000/{saved_image_path}",
             "pdf_url": f"http://127.0.0.1:5000/{pdf_path}",
             "detailed_results": detailed_results,
-            "recommendation": recommendation
+            "recommendation": recommendation,
+            "severity": result
         })
     except Exception as e:
         return jsonify({"error": f"Error during processing: {str(e)}"}), 500
+
+@app.route("/detect_severity", methods=["POST"])
+def detect_severity():
+    data = request.get_json()
+    image_path = data.get('image_path')
+
+    if not image_path or not os.path.exists(image_path):
+        return jsonify({'error': 'Invalid image path'}), 400
+
+    try:
+        is_fundus_image = image_validator.is_fundus_image(image_path)
+        if(is_fundus_image):
+            risk = severity.predict_image(image_path)
+        else:
+            risk = "Unknown"
+        return jsonify({'risk': risk})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route("/<path:filename>", methods=["GET"])
 def serve_file(filename):

@@ -1,0 +1,6 @@
+*/venv
+/backend/uploads
+/backend/pdfs
+/backend/runs
+/yolov5
+*/__pycache__/
